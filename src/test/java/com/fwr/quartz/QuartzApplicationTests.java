@@ -3,6 +3,9 @@ package com.fwr.quartz;
 import com.fwr.quartz.entity.Student;
 import com.fwr.quartz.job.HelloJob;
 import com.fwr.quartz.job.Test2Job;
+import com.fwr.quartz.listener.MyJobListener;
+import com.fwr.quartz.listener.MyScheduleListener;
+import com.fwr.quartz.listener.MyTriggerListener;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -13,6 +16,9 @@ import org.quartz.impl.StdSchedulerFactory;
 import org.quartz.impl.calendar.AnnualCalendar;
 import org.quartz.impl.calendar.CronCalendar;
 import org.quartz.impl.calendar.HolidayCalendar;
+import org.quartz.impl.matchers.EverythingMatcher;
+import org.quartz.impl.matchers.GroupMatcher;
+import org.quartz.impl.matchers.KeyMatcher;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.util.Calendar;
@@ -61,7 +67,7 @@ class QuartzApplicationTests {
                 .withSchedule(simpleSchedule()
                         .repeatForever()
                         .withIntervalInSeconds(5)
-                         .withRepeatCount(3))
+                        .withRepeatCount(3))
                 //绑定休假日期，休假时间内不触发
                 .modifiedByCalendar("myHolidays")
                 .usingJobData("message","b")
@@ -80,9 +86,9 @@ class QuartzApplicationTests {
                 .build();
 
         Date start = new Date();
-        start.setTime(start.getTime() + 2000);
+        start.setTime(start.getTime() + 1000);
         Date end = new Date();
-        end.setTime(start.getTime() + 10000);
+        end.setTime(start.getTime() + 5000);
         Trigger trigger = TriggerBuilder.newTrigger()
                 .withIdentity("trigger1", "tGroup1")
                 .startAt(start)
@@ -94,9 +100,21 @@ class QuartzApplicationTests {
         //Scheduler scheduler = StdSchedulerFactory.getDefaultScheduler();
         StdSchedulerFactory stdSchedulerFactory = new StdSchedulerFactory();
         Scheduler scheduler = stdSchedulerFactory.getScheduler();
+
+        //全局job监听
+        scheduler.getListenerManager().addJobListener(new MyJobListener("job监听器"), EverythingMatcher.allJobs());
+        //局部监听
+        //scheduler.getListenerManager().addJobListener(new MyJobListener(), KeyMatcher.keyEquals(new JobKey("job1","JGroup1")));
+        //scheduler.getListenerManager().addJobListener(new MyJobListener(), GroupMatcher.groupEquals("JGroup"));
+
+        //全局trigger监听
+        scheduler.getListenerManager().addTriggerListener(new MyTriggerListener("trigger监听器"), EverythingMatcher.allTriggers());
+        //scheduler监听
+        scheduler.getListenerManager().addSchedulerListener(new MyScheduleListener());
+
         scheduler.scheduleJob(job, trigger);
         scheduler.start();
-        Thread.sleep(5000);
+        Thread.sleep(3000);
         scheduler.shutdown();
     }
 
